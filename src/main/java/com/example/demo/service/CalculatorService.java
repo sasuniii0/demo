@@ -2,15 +2,22 @@ package com.example.demo.service;
 
 import org.json.JSONObject;
 import org.json.XML;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
 public class CalculatorService {
+
+    private final WebClient webClient;
+
+    public CalculatorService() {
+        this.webClient = WebClient.builder()
+                .baseUrl("http://www.dneonline.com/calculator.asmx")
+                .defaultHeader("Content-Type", "text/xml")
+                .defaultHeader("SOAPAction", "http://tempuri.org/Add")
+                .defaultHeader("Accept", "text/xml")
+                .build();
+    }
 
     public JSONObject convertXmlToJson(String xml) {
         return XML.toJSONObject(xml);
@@ -22,7 +29,6 @@ public class CalculatorService {
     }
 
     public String callSoapService() {
-        String url = "http://www.dneonline.com/calculator.asmx";
 
         String xmlRequest = """
         <?xml version="1.0" encoding="utf-8"?>
@@ -37,18 +43,10 @@ public class CalculatorService {
         </soap:Envelope>
         """;
 
-        HttpHeaders headers = new HttpHeaders();
-
-        headers.setContentType(MediaType.TEXT_XML);
-        headers.add("SOAPAction", "http://tempuri.org/Add");
-        headers.add("Accept", "text/xml");
-        headers.add("User-Agent", "Mozilla/5.0");
-
-        HttpEntity<String> request = new HttpEntity<>(xmlRequest, headers);
-
-        RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
-
-        return response.getBody(); // XML response
+        return webClient.post()
+                .bodyValue(xmlRequest)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
     }
 }
