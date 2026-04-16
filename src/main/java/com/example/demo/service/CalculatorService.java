@@ -5,6 +5,8 @@ import org.json.XML;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.Duration;
+
 @Service
 public class CalculatorService {
 
@@ -19,13 +21,14 @@ public class CalculatorService {
                 .build();
     }
 
-    public JSONObject convertXmlToJson(String xml) {
-        return XML.toJSONObject(xml);
-    }
-
     public JSONObject getJsonResponse() {
-        String xmlResponse = callSoapService();
-        return convertXmlToJson(xmlResponse);
+        try {
+            String xmlResponse = callSoapService();
+            return XML.toJSONObject(xmlResponse);
+
+        } catch (Exception e) {
+            throw new RuntimeException("SOAP Service Error: " + e.getMessage());
+        }
     }
 
     public String callSoapService() {
@@ -47,6 +50,10 @@ public class CalculatorService {
                 .bodyValue(xmlRequest)
                 .retrieve()
                 .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(5))
+                .onErrorResume(ex -> {
+                    throw new RuntimeException("External SOAP API failed");
+                })
                 .block();
     }
 }
